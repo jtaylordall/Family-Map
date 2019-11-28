@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Family Map</string>
+
+    <string name="server_host">Server Host: </string>
+    <string name="server_port">Server Port: </string>
+    <string name="username">Username: </string>
+    <string name="password">Password: </string>
+    <string name="fName">First Name: </string>
+    <string name="lName">Last Name: </string>
+    <string name="email">Email: </string>
+    <string name="gender">Gender: </string>
+
+    <string name="host_example">10.0.2.2</string>
+    <string name="port_example">8080</string>
+    <string name="username_example">helperMonkey030515</string>
+    <string name="password_example">ilovebear2013</string>
+    <string name="fName_example">John</string>
+    <string name="lName_example">Reese</string>
+    <string name="email_example">john.reese@gmail.com</string>
+
+    <string name="male">Male</string>
+    <string name="female">Female</string>
+
+    <string name="sign_in">SIGN IN</string>
+    <string name="register">REGISTER</string>
+</resources>
