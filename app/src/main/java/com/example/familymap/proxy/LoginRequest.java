@@ -1,4 +1,4 @@
-package com.example.familymap.model;
+package com.example.familymap.proxy;
 
 import androidx.annotation.NonNull;
 

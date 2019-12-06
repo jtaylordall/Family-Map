@@ -33,7 +33,7 @@ public class Person {
         this.spouseID = person.getSpouseID();
     }
 
-    public Person(){
+    public Person() {
 
     }
 
@@ -119,7 +119,7 @@ public class Person {
 
     @Override
     public String toString() {
-        return "first: " + firstName +
-                "last: " + lastName;
+        return "\"" + firstName +
+                " " + lastName + "\"";
     }
 }

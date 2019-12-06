@@ -1,84 +1,182 @@
-package com.example.familymap;
+package com.example.familymap.ui.main;
 
-import androidx.annotation.Nullable;
-import androidx.fragment.app.FragmentActivity;
-import androidx.fragment.app.FragmentManager;
-
-import android.content.Intent;
+import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
+
+import androidx.fragment.app.Fragment;
+
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
+import com.example.familymap.R;
 import com.example.familymap.model.AuthToken;
 import com.example.familymap.model.DataStash;
 import com.example.familymap.model.Events;
-import com.example.familymap.model.LoginRequest;
+import com.example.familymap.proxy.LoginRequest;
 import com.example.familymap.model.People;
-import com.example.familymap.model.RegisterRequest;
 import com.example.familymap.model.Person;
+import com.example.familymap.proxy.RegisterRequest;
 import com.google.gson.Gson;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Scanner;
 
-public class MainActivity extends FragmentActivity {
+import static com.example.familymap.ui.main.MainActivity.readString;
 
-    private RegisterFragment registerFragment;
+public class RegisterFragment extends Fragment {
+
     private EditText hostEditText;
     private EditText portEditText;
+    private EditText usernameEditText;
+    private EditText passwordEditText;
+    private EditText firstNameEditText;
+    private EditText lastNameEditText;
+    private EditText emailEditText;
+    private String gender;
+
+    private Button regButton;
+    private Button logButton;
     private DataStash dataStash;
     private String message;
+    private Context regFragContext;
+
+
+    public RegisterFragment() {
+        // Required empty public constructor
+    }
+
+    static RegisterFragment newInstance() {
+        RegisterFragment fragment = new RegisterFragment();
+        Bundle args = new Bundle();
+        fragment.setArguments(args);
+        return fragment;
+    }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        gender = "m";
         dataStash = DataStash.getInstance();
-        setContentView(R.layout.main_activity);
-        Button logButton = findViewById(R.id.loginButton);
-        Button regButton = findViewById(R.id.registerButton);
-        hostEditText = findViewById(R.id.serverHost_enter);
-        portEditText = findViewById(R.id.serverPort_enter);
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        regFragContext = getContext();
+        final View view = inflater.inflate(R.layout.fragment_register, container, false);
+
+        hostEditText = view.findViewById(R.id.serverHost_enter);
+        portEditText = view.findViewById(R.id.serverPort_enter);
+        usernameEditText = view.findViewById(R.id.username_enter);
+        passwordEditText = view.findViewById(R.id.password_enter);
+        firstNameEditText = view.findViewById(R.id.firstName_enter);
+        lastNameEditText = view.findViewById(R.id.lastName_enter);
+        emailEditText = view.findViewById(R.id.email_enter);
+        RadioGroup genderRadioGroup = view.findViewById(R.id.genderRadio);
+
+        regButton = view.findViewById(R.id.registerButton);
+        regButton.setEnabled(false);
+        logButton = view.findViewById(R.id.loginButton);
+        logButton.setEnabled(false);
+
+        TextWatcher textWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (!hostEditText.getText().toString().equals("") &&
+                        !portEditText.getText().toString().equals("") &&
+                        !usernameEditText.getText().toString().equals("") &&
+                        !passwordEditText.getText().toString().equals("")) {
+                    logButton.setEnabled(true);
+                    if (!firstNameEditText.getText().toString().equals("") &&
+                            !lastNameEditText.getText().toString().equals("") &&
+                            !emailEditText.getText().toString().equals("")) {
+                        regButton.setEnabled(true);
+                    } else {
+                        regButton.setEnabled(false);
+                    }
+                } else {
+                    logButton.setEnabled(false);
+                    regButton.setEnabled(false);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+            }
+        };
+
+        hostEditText.addTextChangedListener(textWatcher);
+        portEditText.addTextChangedListener(textWatcher);
+        usernameEditText.addTextChangedListener(textWatcher);
+        passwordEditText.addTextChangedListener(textWatcher);
+        firstNameEditText.addTextChangedListener(textWatcher);
+        lastNameEditText.addTextChangedListener(textWatcher);
+        emailEditText.addTextChangedListener(textWatcher);
+
+        genderRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                if (checkedId == R.id.maleRadio) {
+                    gender = "m";
+                } else if (checkedId == R.id.femaleRadio) {
+                    gender = "f";
+                }
+            }
+        });
+
         regButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                regButton.setEnabled(false);
+                logButton.setEnabled(false);
                 onRegButtonClicked();
             }
         });
         logButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                regButton.setEnabled(false);
+                logButton.setEnabled(false);
                 onLogButtonClicked();
             }
         });
-        FragmentManager fragmentManager = getSupportFragmentManager();
-        registerFragment =
-                (RegisterFragment) fragmentManager.findFragmentById(R.id.fragment_reg);
 
-        if (registerFragment == null) {
-            registerFragment = RegisterFragment.newInstance();
-            fragmentManager.beginTransaction().add(R.id.fragment_reg, registerFragment);
-        }
+        setLoginFields(); // auto fill fields for debugging
+        return view;
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+
+    RegisterRequest getRegRequest() {
+        return new RegisterRequest(usernameEditText.getText().toString(),
+                passwordEditText.getText().toString(),
+                emailEditText.getText().toString(),
+                firstNameEditText.getText().toString(),
+                lastNameEditText.getText().toString(),
+                gender,
+                null,
+                null,
+                null);
     }
 
     private void onLogButtonClicked() {
 
-        final LoginRequest loginRequest = registerFragment.getLogRequest();
+        final LoginRequest loginRequest = getLogRequest();
         dataStash.setHost(hostEditText.getText().toString());
         dataStash.setPort(portEditText.getText().toString());
 
@@ -96,7 +194,7 @@ public class MainActivity extends FragmentActivity {
 
     private void onRegButtonClicked() {
 
-        final RegisterRequest registerRequest = registerFragment.getRegRequest();
+        final RegisterRequest registerRequest = getRegRequest();
 
         dataStash.setHost(hostEditText.getText().toString());
         dataStash.setPort(portEditText.getText().toString());
@@ -128,7 +226,7 @@ public class MainActivity extends FragmentActivity {
                 http.connect();
 
                 OutputStream reqBody = http.getOutputStream();
-                writeString(reqData, reqBody);
+                MainActivity.writeString(reqData, reqBody);
                 reqBody.close();
 
                 if (http.getResponseCode() == HttpURLConnection.HTTP_OK) {
@@ -156,7 +254,7 @@ public class MainActivity extends FragmentActivity {
                 PersonTask personTask = new PersonTask();
                 personTask.execute();
             } else {
-                showToast(new Gson().fromJson(result, Message.class).getMessage());
+                showToast(new Gson().fromJson(result, MainActivity.Message.class).getMessage());
             }
         }
     }
@@ -194,11 +292,11 @@ public class MainActivity extends FragmentActivity {
         @Override
         protected void onPostExecute(String result) {
             if (!result.contains("Error")) {
-                dataStash.setPerson(new Gson().fromJson(result, Person.class));
+                dataStash.setActivePerson(new Gson().fromJson(result, Person.class));
                 FamilyTask familyTask = new FamilyTask();
                 familyTask.execute();
             } else {
-                showToast(new Gson().fromJson(result, Message.class).getMessage());
+                showToast(new Gson().fromJson(result, MainActivity.Message.class).getMessage());
             }
         }
     }
@@ -240,7 +338,7 @@ public class MainActivity extends FragmentActivity {
                 EventsTask eventsTask = new EventsTask();
                 eventsTask.execute();
             } else {
-                showToast(new Gson().fromJson(result, Message.class).getMessage());
+                showToast(new Gson().fromJson(result, MainActivity.Message.class).getMessage());
             }
         }
     }
@@ -275,49 +373,32 @@ public class MainActivity extends FragmentActivity {
         @Override
         protected void onPostExecute(String result) {
             if (!result.contains("Error")) {
+                //System.out.println(result);
                 dataStash.setEvents(new Gson().fromJson(result, Events.class));
-                Person person = dataStash.getPerson();
+                //System.out.println(Arrays.toString(dataStash.getEvents().getEvents()));
+                Person person = dataStash.getActivePerson();
                 showToast(message + person.getFirstName() + " " + person.getLastName());
+                getFragmentManager().beginTransaction()
+                        .replace(R.id.main_activity_frame_layout, MapFragment.newInstance(), "Map").commit();
             } else {
-                showToast(new Gson().fromJson(result, Message.class).getMessage());
+                showToast(new Gson().fromJson(result, MainActivity.Message.class).getMessage());
             }
         }
     }
 
-    private static String readString(InputStream is) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        InputStreamReader sr = new InputStreamReader(is);
-        char[] buf = new char[1024];
-        int len;
-        while ((len = sr.read(buf)) > 0) {
-            sb.append(buf, 0, len);
-        }
-        return sb.toString();
-    }
-
-    private void writeString(String str, OutputStream os) throws IOException {
-        OutputStreamWriter sw = new OutputStreamWriter(os);
-        sw.write(str);
-        sw.flush();
+    private LoginRequest getLogRequest() {
+        return new LoginRequest(usernameEditText.getText().toString(),
+                passwordEditText.getText().toString());
     }
 
     private void showToast(String message) {
-        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+        Toast.makeText(regFragContext, message, Toast.LENGTH_SHORT).show();
     }
 
-    private class Message {
-        private String message;
-
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
+    private void setLoginFields() {
+        hostEditText.setText("10.0.2.2");
+        portEditText.setText("8080");
+        usernameEditText.setText("a");
+        passwordEditText.setText("b");
     }
 }
-
-
-
-

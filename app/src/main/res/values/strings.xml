@@ -23,4 +23,10 @@
 
     <string name="sign_in">SIGN IN</string>
     <string name="register">REGISTER</string>
+
+    <string name="map_default">Click on a marker to see event details</string>
+
+    <string name="life_events">Life Events</string>
+    <string name="family">Family</string>
+
 </resources>

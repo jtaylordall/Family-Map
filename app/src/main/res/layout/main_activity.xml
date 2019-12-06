@@ -4,16 +4,12 @@
     android:id="@+id/container_logReg"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-
+    android:orientation="vertical"
     android:visibility="visible"
-    tools:context=".MainActivity">
+    tools:context=".ui.main.MainActivity">
 
-    <fragment
-        android:id="@+id/fragment_reg"
-        android:name="com.example.familymap.RegisterFragment"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp"
-        android:visibility="visible"
-        tools:layout="@layout/fragment_register" />
+        android:id="@+id/main_activity_frame_layout"/>
 </LinearLayout>

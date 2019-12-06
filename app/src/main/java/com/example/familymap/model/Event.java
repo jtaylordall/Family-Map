@@ -9,7 +9,6 @@ public class Event {
     private String country;
     private String city;
     private String eventType;
-
     private int year;
 
     public Event(String associatedUsername, String eventID, String personID, double latitude, double longitude,
@@ -112,5 +111,18 @@ public class Event {
                 city.equals(e.getCity()) &&
                 eventType.equals(e.getEventType()) &&
                 year == e.getYear();
+    }
+
+    @Override
+    public String toString() {
+        return "\nassociatedUsername: " + associatedUsername +
+                "\neventID: " + eventID +
+                "\npersonID: " + personID +
+                "\nlatitude: " + latitude +
+                "\nlongitude: " + longitude +
+                "\ncountry: " + country +
+                "\ncity: " + city +
+                "\neventType: " + eventType +
+                "\nyear: " + year;
     }
 }
