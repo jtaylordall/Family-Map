@@ -18,10 +18,10 @@ import android.widget.Toast;
 
 import com.example.familymap.R;
 import com.example.familymap.model.AuthToken;
-import com.example.familymap.model.DataStash;
-import com.example.familymap.model.Events;
+import com.example.familymap.data.DataStash;
+import com.example.familymap.model.EventWrapper;
 import com.example.familymap.proxy.LoginRequest;
-import com.example.familymap.model.People;
+import com.example.familymap.model.PersonWrapper;
 import com.example.familymap.model.Person;
 import com.example.familymap.proxy.RegisterRequest;
 import com.google.gson.Gson;
@@ -42,6 +42,7 @@ public class RegisterFragment extends Fragment {
     private EditText firstNameEditText;
     private EditText lastNameEditText;
     private EditText emailEditText;
+    private RadioGroup genderRadioGroup;
     private String gender;
 
     private Button regButton;
@@ -75,6 +76,15 @@ public class RegisterFragment extends Fragment {
         regFragContext = getContext();
         final View view = inflater.inflate(R.layout.fragment_register, container, false);
 
+        initViews(view);
+        setTextListeners();
+        setClickListeners();
+
+        setLoginFields(); // auto fill fields for debugging
+        return view;
+    }
+
+    private void initViews(View view) {
         hostEditText = view.findViewById(R.id.serverHost_enter);
         portEditText = view.findViewById(R.id.serverPort_enter);
         usernameEditText = view.findViewById(R.id.username_enter);
@@ -82,17 +92,18 @@ public class RegisterFragment extends Fragment {
         firstNameEditText = view.findViewById(R.id.firstName_enter);
         lastNameEditText = view.findViewById(R.id.lastName_enter);
         emailEditText = view.findViewById(R.id.email_enter);
-        RadioGroup genderRadioGroup = view.findViewById(R.id.genderRadio);
+        genderRadioGroup = view.findViewById(R.id.genderRadio);
 
         regButton = view.findViewById(R.id.registerButton);
         regButton.setEnabled(false);
         logButton = view.findViewById(R.id.loginButton);
         logButton.setEnabled(false);
+    }
 
+    private void setTextListeners() {
         TextWatcher textWatcher = new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
             }
 
             @Override
@@ -117,7 +128,6 @@ public class RegisterFragment extends Fragment {
 
             @Override
             public void afterTextChanged(Editable s) {
-
             }
         };
 
@@ -128,7 +138,9 @@ public class RegisterFragment extends Fragment {
         firstNameEditText.addTextChangedListener(textWatcher);
         lastNameEditText.addTextChangedListener(textWatcher);
         emailEditText.addTextChangedListener(textWatcher);
+    }
 
+    private void setClickListeners() {
         genderRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
@@ -156,13 +168,9 @@ public class RegisterFragment extends Fragment {
                 onLogButtonClicked();
             }
         });
-
-        setLoginFields(); // auto fill fields for debugging
-        return view;
     }
 
-
-    RegisterRequest getRegRequest() {
+    private RegisterRequest getRegRequest() {
         return new RegisterRequest(usernameEditText.getText().toString(),
                 passwordEditText.getText().toString(),
                 emailEditText.getText().toString(),
@@ -334,7 +342,7 @@ public class RegisterFragment extends Fragment {
         @Override
         protected void onPostExecute(String result) {
             if (!result.contains("Error")) {
-                dataStash.setPeople(new Gson().fromJson(result, People.class));
+                dataStash.setPersonWrapper(new Gson().fromJson(result, PersonWrapper.class));
                 EventsTask eventsTask = new EventsTask();
                 eventsTask.execute();
             } else {
@@ -373,11 +381,10 @@ public class RegisterFragment extends Fragment {
         @Override
         protected void onPostExecute(String result) {
             if (!result.contains("Error")) {
-                //System.out.println(result);
-                dataStash.setEvents(new Gson().fromJson(result, Events.class));
-                //System.out.println(Arrays.toString(dataStash.getEvents().getEvents()));
+                dataStash.setEventWrapper(new Gson().fromJson(result, EventWrapper.class));
                 Person person = dataStash.getActivePerson();
                 showToast(message + person.getFirstName() + " " + person.getLastName());
+                dataStash.setLoggedIn(true);
                 getFragmentManager().beginTransaction()
                         .replace(R.id.main_activity_frame_layout, MapFragment.newInstance(), "Map").commit();
             } else {
@@ -395,10 +402,11 @@ public class RegisterFragment extends Fragment {
         Toast.makeText(regFragContext, message, Toast.LENGTH_SHORT).show();
     }
 
+    // auto fill fields for debugging
     private void setLoginFields() {
         hostEditText.setText("10.0.2.2");
         portEditText.setText("8080");
-        usernameEditText.setText("a");
-        passwordEditText.setText("b");
+        usernameEditText.setText("sheila");
+        passwordEditText.setText("parker");
     }
 }

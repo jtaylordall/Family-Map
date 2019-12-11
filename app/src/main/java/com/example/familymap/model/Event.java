@@ -1,6 +1,8 @@
 package com.example.familymap.model;
 
-public class Event {
+import android.os.Build;
+
+public class Event implements Comparable<Event> {
     private String associatedUsername;
     private String eventID;
     private String personID;
@@ -124,5 +126,17 @@ public class Event {
                 "\ncity: " + city +
                 "\neventType: " + eventType +
                 "\nyear: " + year;
+    }
+
+    @Override
+    public int compareTo(Event o) {
+        if (year != o.getYear()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                return Integer.compare(year, o.getYear());
+            }
+        } else if (!eventType.equals(o.getEventType())) {
+            return eventType.compareTo(o.getEventType());
+        }
+        return 0;
     }
 }

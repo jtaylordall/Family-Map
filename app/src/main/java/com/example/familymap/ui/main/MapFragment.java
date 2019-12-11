@@ -1,13 +1,12 @@
 package com.example.familymap.ui.main;
 
-
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,13 +14,16 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.example.familymap.R;
-import com.example.familymap.model.DataStash;
+import com.example.familymap.data.DataStash;
+import com.example.familymap.data.SettingsManager;
 import com.example.familymap.model.Event;
 import com.example.familymap.model.Person;
+import com.example.familymap.support.EventFinder;
+import com.example.familymap.support.FamilyFinder;
+import com.example.familymap.support.Filter;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -33,38 +35,48 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.joanzapata.iconify.IconDrawable;
 import com.joanzapata.iconify.fonts.FontAwesomeIcons;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Random;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.Vector;
 
-import static android.graphics.Color.BLUE;
-import static com.google.android.gms.maps.GoogleMap.MAP_TYPE_SATELLITE;
+import static com.example.familymap.data.Values.*;
 
 public class MapFragment extends Fragment implements OnMapReadyCallback {
-
-    final int REQ_CODE_ORDER_INFO = 1;
 
     private GoogleMap map;
     private TextView markerTextView;
     private DataStash dataStash;
-
+    private SettingsManager settingsManager;
+    private Person activePerson;
+    private Event event;
     private FrameLayout frameLayout;
+    private Vector<Polyline> polylines;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        polylines = new Vector<>();
         View view = inflater.inflate(R.layout.fragment_map, container, false);
         frameLayout = view.findViewById(R.id.icon_marker_frame_layout);
         ImageView imageView = new ImageView(getContext());
         imageView.setBackgroundResource(R.drawable.ic_launcher_foreground);
-        frameLayout.addView(imageView);
-        markerTextView = (TextView) view.findViewById(R.id.map_marker_info);
 
+        frameLayout.addView(imageView);
+        markerTextView = view.findViewById(R.id.map_marker_info);
+        if (getActivity().getClass() == MainActivity.class) {
+            ((MainActivity) getActivity()).createMenu();
+        }
         dataStash = DataStash.getInstance();
+        settingsManager = SettingsManager.getInstance();
 
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getChildFragmentManager()
@@ -77,9 +89,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
                 initMap();
             }
         });
-
         return view;
-
     }
 
     static MapFragment newInstance() {
@@ -91,99 +101,127 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
 
     private void initMap() {
 
-//        centerMap();
+        Event[] events = dataStash.getEventWrapper().getEvents();
+        events = filter(events);
+        centerMap();
 //        zoomMap(10);
 //        setMapType();
 //        setClickListener();
 //        zoomMap(2);
-        addMarkers();
+        addMarkers(events);
+        //assessLineSettings(events);
 //        setBounds();
-        setMarkerListener();
+        setMarkerListener(events);
 //        drawLines();
     }
 
-    void centerMap() {
-        LatLng byu = new LatLng(40.2518, -111.6493);
-        CameraUpdate update = CameraUpdateFactory.newLatLng(byu);
-        map.moveCamera(update);
-        map.addMarker(new MarkerOptions().position(byu));
+    private void centerMap() {
+        if (this.getArguments().containsKey("eventID")) {
+            Event event = new EventFinder().findEvent(this.getArguments().getString("eventID"));
+            Log.d("EVENT", event.toString());
+
+            LatLng center = new LatLng(event.getLatitude(), event.getLongitude());
+            CameraUpdate update = CameraUpdateFactory.newLatLng(center);
+            map.moveCamera(update);
+            MarkerOptions options =
+                    new MarkerOptions().position(center).title(event.getCity())
+                            .icon(generateBitmapDescriptorMarker(dataStash.getEventColor(event.getEventType())));
+            Marker marker = map.addMarker(options);
+            marker.setTag(event);
+
+            setMarkerListener(filter(dataStash.getEventWrapper().getEvents()));
+            Person person = dataStash.getPersonMap().get(event.getPersonID());
+            activePerson = person;
+            String markerData = getMarkerData(person, event);
+            markerTextView.setText(markerData);
+            setGenderIcon(person.getGender());
+            setPersonClickListener();
+            zoomMap(WIDTH);
+        }
     }
 
-    void zoomMap(float amount) {
-        CameraUpdate update = CameraUpdateFactory.zoomTo(amount);
+    private void zoomMap(float amount) {
+        CameraUpdate update = CameraUpdateFactory.zoomTo(1);
         map.moveCamera(update);
     }
-
-    //    static final int mapType = MAP_TYPE_NORMAL;
-    static final int mapType = MAP_TYPE_SATELLITE;
 
     void setMapType() {
-        map.setMapType(mapType);
+        map.setMapType(mapType2);
     }
 
-    void setClickListener() {
-        map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
-            @Override
-            public void onMapClick(LatLng latLng) {
-                markerTextView.setText(latLng.toString());
-            }
-        });
-    }
-
-    void setPersonClickListener() {
+    private void setPersonClickListener() {
         markerTextView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = PersonActivity.newIntent(getContext());
+                intent.putExtra("personID", activePerson.getPersonID());
+                Log.d("Map to Person tag", activePerson.toString());
                 startActivityForResult(intent, REQ_CODE_ORDER_INFO);
 
             }
         });
     }
 
-    void addMarkers() {
-        Event[] events = dataStash.getEvents().getEvents();
+    private void setMarkerListener(final Event[] events) {
+        map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                clearPolylines();
+                zoomMap(WIDTH);
+                Event event = (Event) marker.getTag();
+                Person person = dataStash.getPersonMap().get(event.getPersonID());
+                //dataStash.setActivePerson(person);
+                activePerson = person;
+                String markerData = getMarkerData(person, event);
+                markerTextView.setText(markerData);
+                setGenderIcon(person.getGender());
+                setPersonClickListener();
+                assessLineSettings(events, event);
+                return false;
+            }
+        });
+    }
+
+    private void setMarkerListener() {
+        map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                zoomMap(WIDTH);
+                clearPolylines();
+                Event event = (Event) marker.getTag();
+                Person person = dataStash.getPersonMap().get(event.getPersonID());
+                //dataStash.setActivePerson(person);
+                activePerson = person;
+                String markerData = getMarkerData(person, event);
+                markerTextView.setText(markerData);
+                setGenderIcon(person.getGender());
+                setPersonClickListener();
+                return false;
+            }
+        });
+    }
+
+    private void addMarkers(Event[] events) {
         Map<String, Event> eventMap = new TreeMap<>();
         for (Event event : events) {
-            String city = event.getCity();
-            if (eventMap.containsKey(city)) {
-                Event conflictingEvent = eventMap.get(city);
+            String id = (event.getCity() + event.getLatitude() + event.getLongitude());
+            if (eventMap.containsKey(id)) {
+                Event conflictingEvent = eventMap.get(id);
                 if (conflictingEvent.getYear() < event.getYear()) {
                     conflictingEvent = event;
                 }
             } else {
-                eventMap.put(city, event);
+                eventMap.put(id, event);
             }
         }
         for (Map.Entry<String, Event> entry : eventMap.entrySet()) {
             Event event = entry.getValue();
-            addMarker(event,
-                    new LatLng(event.getLatitude(), event.getLongitude()),
-                    getColor(event.getEventType()));
+            if (!event.equals(this.event)) {
+                addMarker(event,
+                        new LatLng(event.getLatitude(), event.getLongitude()),
+                        getColor(event.getEventType()));
+            }
         }
-    }
-
-    /*
-    work on getting more varied colors, perhaps by incrementing instead of generating a random color
-     */
-    private int getColor(String eventType) {
-        int out;
-        Map<String, Integer> eventColors = dataStash.getEventColors();
-        if (!eventColors.containsKey(eventType) || eventColors.get(eventType) == null) {
-            Random rand = new Random();
-            do {
-                int r = rand.nextInt(255);
-                int g = rand.nextInt(255);
-                int b = rand.nextInt(255);
-
-                out = Color.rgb(r, g, b);
-            } while (eventColors.containsValue(out));
-            eventColors.put(eventType, out);
-
-        } else {
-            out = eventColors.get(eventType);
-        }
-        return out;
     }
 
     private void addMarker(Event event, LatLng latLng, int colorInt) {
@@ -195,8 +233,27 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         marker.setTag(event);
     }
 
+    /*
+    work on getting more varied colors, perhaps by incrementing instead of generating a random color
+    */
+    private int getColor(String eventType) {
+        int out;
+        Map<String, Integer> eventColors = dataStash.getEventColors();
+        if (!eventColors.containsKey(eventType.toLowerCase()) ||
+                eventColors.get(eventType.toLowerCase()) == null) {
+            do {
+                out = getRandColor();
+            } while (eventColors.containsValue(out));
+            eventColors.put(eventType.toLowerCase(), out);
+
+        } else {
+            out = eventColors.get(eventType.toLowerCase());
+        }
+        return out;
+    }
+
     void setBounds() {
-        Event[] events = dataStash.getEvents().getEvents();
+        Event[] events = dataStash.getEventWrapper().getEvents();
         LatLngBounds.Builder builder = LatLngBounds.builder();
         for (Event event : events) {
             builder.include(new LatLng(event.getLatitude(), event.getLongitude()));
@@ -207,47 +264,94 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         map.moveCamera(update);
     }
 
-    private void setMarkerListener() {
-        map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-            @Override
-            public boolean onMarkerClick(Marker marker) {
-                setPersonClickListener();
-                Event event = (Event) marker.getTag();
-                Person person = dataStash.getPersonMap().get(event.getPersonID());
-                dataStash.setActivePerson(person);
-                String markerData = person.getFirstName() + " " +
-                        person.getLastName() + "\n" +
-                        event.getEventType().toUpperCase() + ": " +
-                        event.getCity() + ", " +
-                        event.getCountry() +
-                        " (" + event.getYear() + ")";
-                markerTextView.setText(markerData);
-                setGenderIcon(person.getGender());
-                return false;
-            }
-        });
+    void drawFamilyTreeLines(Event[] events, Event event) {
+        SortedSet<Event> eventSet = new TreeSet<>();
+        Person person = new FamilyFinder().findPerson(event.getPersonID());
+        Collections.addAll(eventSet, events);
+        int color = getRandColor();
+        drawParentLine(person, eventSet, 12, color);
     }
 
-    void drawLines() {
+    private void drawParentLine(Person person, SortedSet<Event> eventSet, float width, int color) {
+        FamilyFinder familyFinder = new FamilyFinder();
+        EventFinder eventFinder = new EventFinder();
+        Person father = familyFinder.findPerson(person.getFatherID());
+        Person mother = familyFinder.findPerson(person.getMotherID());
+        if (father != null) {
+            Event[] fEvents = eventFinder.getPersonEvents(father.getFatherID());
+            if (fEvents.length > 0) {
+                Event fEvent = fEvents[0];
+                if (eventSet.contains(fEvent)) {
+                    drawRelationshipLine(person, father, width, color);
+                }
+            }
+            drawParentLine(father, eventSet, width - 2, color);
+        }
+        if (mother != null) {
+            Event[] mEvents = eventFinder.getPersonEvents(mother.getMotherID());
+            if (mEvents.length > 0) {
+                Event mEvent = mEvents[0];
+                if (eventSet.contains(mEvent)) {
+                    drawRelationshipLine(person, mother, width, color);
+                }
+            }
+            drawParentLine(mother, eventSet, width - 2, color);
+        }
+    }
+
+    private void drawLifeLines(Event[] events, Event event) {
+        SortedSet<String> ids = new TreeSet<>();
+        drawLifeLine(event.getPersonID());
+    }
+
+    private void drawLifeLine(String personID) {
         LatLng lastCity = null;
-        Event[] events = dataStash.getEvents().getEvents();
+        Event[] events = new EventFinder().getPersonEvents(personID);
+        int color = dataStash.getEventColor("birth");
         for (Event event : events) {
             LatLng latLng = new LatLng(event.getLatitude(), event.getLongitude());
             if (lastCity != null)
-                drawLine(lastCity, latLng);
+                drawLine(lastCity, latLng, WIDTH, color);
             lastCity = latLng;
         }
     }
 
-    static final float WIDTH = 10;  // in pixels
-    static final int color = BLUE;
-//    static final int color = BLACK;
+    private void drawSpouseLines(Event[] events, Event event) {
+        Person person = new FamilyFinder().findPerson(event.getPersonID());
+        for (Event e : events) {
+            if ("marriage".equals(e.getEventType()) && e.getPersonID().equals(person.getPersonID())) {
+                Person spouse = new FamilyFinder().findPerson(person.getSpouseID());
+                drawRelationshipLine(person, spouse, WIDTH,
+                        dataStash.getEventColor("marriage"));
+                break;
+            }
+        }
+    }
 
-    private void drawLine(LatLng point1, LatLng point2) {
+    private void drawRelationshipLine(Person husband, Person wife, float width, int color) {
+        Event hEvent = new EventFinder().getPersonEvents(husband.getPersonID())[0];
+        Event wEvent = new EventFinder().getPersonEvents(wife.getPersonID())[0];
+        if (hEvent != null && wEvent != null) {
+            LatLng latLng1 = new LatLng(hEvent.getLatitude(), hEvent.getLongitude());
+            LatLng latLng2 = new LatLng(wEvent.getLatitude(), wEvent.getLongitude());
+            drawLine(latLng1, latLng2, width, color);
+        }
+    }
+
+    private void drawLine(LatLng point1, LatLng point2, float width, int color) {
         PolylineOptions options =
                 new PolylineOptions().add(point1, point2)
-                        .color(color).width(WIDTH);
-        map.addPolyline(options);
+                        .color(color).width(width);
+
+        polylines.add(map.addPolyline(options));
+    }
+
+    private void clearPolylines() {
+        for (Polyline p : polylines) {
+            p.remove();
+        }
+        polylines.clear();
+
     }
 
     @Override
@@ -286,4 +390,62 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
+    private String getMarkerData(Person person, Event event) {
+        if (person != null && event != null) {
+            return person.getFirstName() + " " +
+                    person.getLastName() + "\n" +
+                    event.getEventType().toUpperCase() + ": " +
+                    event.getCity() + ", " +
+                    event.getCountry() +
+                    " (" + event.getYear() + ")";
+        } else {
+            return "";
+        }
+    }
+
+    private void assessLineSettings(Event[] events, Event event) {
+        clearPolylines();
+        if (settingsManager.isSpouseLinesOn() &&
+                settingsManager.isMaleEventsOn() &&
+                settingsManager.isFemaleEventsOn()) {
+            drawSpouseLines(events, event);
+        }
+        if (settingsManager.isLifeStoryLinesOn()) {
+            drawLifeLines(events, event);
+        }
+        if (settingsManager.isFamilyTreeLinesOn()) {
+            drawFamilyTreeLines(events, event);
+        }
+    }
+
+    private Event[] filter(Event[] events) {
+        Filter filter = new Filter();
+
+        if (settingsManager.isFathersSideOn() && !settingsManager.isMothersSideOn()) {
+            events = filter.filterFathersSide(events);
+        } else if (settingsManager.isMothersSideOn() && !settingsManager.isFathersSideOn()) {
+            events = filter.filterMothersSide(events);
+        } else if (!settingsManager.isFathersSideOn() && !settingsManager.isMothersSideOn()) {
+            events = new EventFinder().getPersonEvents(dataStash.getActivePerson().getPersonID());
+        }
+
+        if (settingsManager.isMaleEventsOn() && !settingsManager.isFemaleEventsOn()) {
+            events = filter.filterMales(events);
+        } else if (settingsManager.isFemaleEventsOn() && !settingsManager.isMaleEventsOn()) {
+            events = filter.filterFemales(events);
+        } else if (!settingsManager.isMaleEventsOn() && !settingsManager.isFemaleEventsOn()) {
+            events = new Event[]{};
+        }
+
+        return events;
+    }
+
+    private int getRandColor() {
+        Random rand = new Random();
+        int r = rand.nextInt(255);
+        int g = rand.nextInt(255);
+        int b = rand.nextInt(255);
+
+        return Color.rgb(r, g, b);
+    }
 }

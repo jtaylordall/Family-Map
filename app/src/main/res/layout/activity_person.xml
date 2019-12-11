@@ -116,8 +116,7 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view_family"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:nestedScrollingEnabled="false"/>
+            android:layout_height="wrap_content" />
 
         <View
             android:layout_width="match_parent"
@@ -127,7 +126,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="100dp"
-            android:background="@android:color/white"/>
+            android:background="@android:color/white" />
     </LinearLayout>
 
 </ScrollView>

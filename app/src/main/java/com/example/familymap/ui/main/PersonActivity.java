@@ -6,52 +6,69 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.provider.ContactsContract;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.example.familymap.R;
-import com.example.familymap.model.DataStash;
+import com.example.familymap.data.DataStash;
 import com.example.familymap.model.Event;
 import com.example.familymap.model.Person;
+import com.example.familymap.support.EventFinder;
+import com.example.familymap.support.FamilyFinder;
 import com.joanzapata.iconify.IconDrawable;
 import com.joanzapata.iconify.fonts.FontAwesomeIcons;
 
 import java.util.Map;
 
+import static com.example.familymap.data.Values.*;
+
 public class PersonActivity extends AppCompatActivity {
 
-    final private int ISNT_FAMILY = 0;
-    final private int IS_FATHER = 1;
-    final private int IS_MOTHER = 2;
-    final private int IS_SPOUSE = 3;
-    final private int IS_CHILD = 4;
-
     private Person activePerson;
+
     private DataStash dataStash;
+    private EventFinder eventFinder;
+    private FamilyFinder familyFinder;
+
     private RecyclerView recyclerView_lifeEvents;
     private RecyclerView recyclerView_family;
     private boolean lifeEventsOn;
     private boolean familyOn;
+
+    private Context personActivityContext;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_person);
 
+        personActivityContext = this;
+
+        eventFinder = new EventFinder();
+        familyFinder = new FamilyFinder();
+
         lifeEventsOn = false;
         familyOn = false;
 
         dataStash = DataStash.getInstance();
-        activePerson = dataStash.getActivePerson();
+
+        //activePerson = dataStash.getActivePerson();
+
+        String personID = getIntent().getStringExtra("personID");
+
+        Log.d("Person find tag", personID);
+
+        activePerson = familyFinder.findPerson(personID);
+
+        Log.d("Found active person", activePerson.toString());
 
         TextView textViewFirstName = findViewById(R.id.person_fname);
         TextView textViewLastName = findViewById(R.id.person_lname);
@@ -98,10 +115,10 @@ public class PersonActivity extends AppCompatActivity {
         EventAdapter eventAdapter;
         if (lifeEventsOn) {
             eventAdapter = new EventAdapter(this,
-                    dataStash.getPersonEvents(activePerson.getPersonID()));
+                    eventFinder.getPersonEvents(activePerson.getPersonID()));
         } else {
             eventAdapter = new EventAdapter(this,
-                    dataStash.getPersonEvents(""));
+                    eventFinder.getPersonEvents(""));
         }
         recyclerView_lifeEvents.setAdapter(eventAdapter);
     }
@@ -111,10 +128,10 @@ public class PersonActivity extends AppCompatActivity {
         FamAdapter famAdapter;
         if (familyOn) {
             famAdapter = new FamAdapter(this,
-                    dataStash.getPersonFamily(activePerson.getPersonID()));
+                    familyFinder.getPersonFamily(activePerson.getPersonID()));
         } else {
             famAdapter = new FamAdapter(this,
-                    dataStash.getPersonFamily(""));
+                    familyFinder.getPersonFamily(""));
         }
         recyclerView_family.setAdapter(famAdapter);
     }
@@ -153,7 +170,6 @@ public class PersonActivity extends AppCompatActivity {
 
     class EventHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
 
-        private ImageView eventIcon;
         private TextView eventInfo;
         private TextView eventPersonName;
         private Event event;
@@ -164,6 +180,24 @@ public class PersonActivity extends AppCompatActivity {
             frameLayout = view.findViewById(R.id.list_item_icon);
             eventInfo = view.findViewById(R.id.list_item_info);
             eventPersonName = view.findViewById(R.id.list_item_name);
+
+            frameLayout.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = EventActivity.newIntent(personActivityContext);
+                    startActivityForResult(intent, REQ_CODE_ORDER_INFO);
+                }
+            });
+
+            LinearLayout listItem = view.findViewById(R.id.list_item_layout);
+            listItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = EventActivity.newIntent(personActivityContext);
+                    intent.putExtra("eventID", event.getEventID());
+                    startActivityForResult(intent, REQ_CODE_ORDER_INFO);
+                }
+            });
         }
 
         void bind(Event event) {
@@ -173,7 +207,7 @@ public class PersonActivity extends AppCompatActivity {
                     FontAwesomeIcons.fa_map_marker)
                     .color(dataStash.getEventColor(event.getEventType()))
                     .sizeDp(40);
-            eventIcon = new ImageView(getApplicationContext());
+            ImageView eventIcon = new ImageView(getApplicationContext());
             eventIcon.setImageDrawable(drawable);
             eventIcon.setPadding(10, 10, 10, 10);
 
@@ -190,11 +224,7 @@ public class PersonActivity extends AppCompatActivity {
 
         @Override
         public void onClick(View view) {
-            /*if (checkBox.isChecked())
-                selected.add(item);
-            else
-                selected.remove(item);
-            textView.setText(selected.toString());*/
+
         }
 
     }
@@ -226,7 +256,6 @@ public class PersonActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(FamHolder holder, int position) {
-            System.out.println(familyArray);
             Person person = familyArray[position];
             int relationship = 0;
             for (Map.Entry<Integer, Person> e : family.entrySet()) {
@@ -258,6 +287,17 @@ public class PersonActivity extends AppCompatActivity {
             frameLayout = view.findViewById(R.id.list_item_icon);
             personName = view.findViewById(R.id.list_item_info);
             personInfo = view.findViewById(R.id.list_item_name);
+
+            LinearLayout listItem = view.findViewById(R.id.list_item_layout);
+            listItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = PersonActivity.newIntent(personActivityContext);
+                    intent.putExtra("personID", person.getPersonID());
+                    startActivityForResult(intent, REQ_CODE_ORDER_INFO);
+                }
+            });
+
         }
 
         void bind(int relationship, Person person) {
@@ -300,11 +340,7 @@ public class PersonActivity extends AppCompatActivity {
 
         @Override
         public void onClick(View view) {
-            /*if (checkBox.isChecked())
-                selected.add(item);
-            else
-                selected.remove(item);
-            textView.setText(selected.toString());*/
+
         }
 
     }

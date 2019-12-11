@@ -1,17 +1,20 @@
 package com.example.familymap.ui.main;
 
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.widget.Toast;
+
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentManager;
 
-import android.content.Intent;
-import android.os.Bundle;
-import android.widget.EditText;
-import android.widget.Toast;
-
 import com.example.familymap.R;
-import com.example.familymap.model.DataStash;
-
+import com.example.familymap.data.DataStash;
+import com.joanzapata.iconify.Iconify;
+import com.joanzapata.iconify.fonts.FontAwesomeModule;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,19 +22,14 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 
-import com.joanzapata.iconify.Iconify;
-import com.joanzapata.iconify.fonts.FontAwesomeModule;
+import static com.example.familymap.data.Values.REQ_CODE_ORDER_INFO;
 
 
 public class MainActivity extends AppCompatActivity {
 
     private RegisterFragment registerFragment;
-    private MapFragment mapFragment;
-    private FragmentManager fragmentManager;
-    private EditText hostEditText;
-    private EditText portEditText;
     private DataStash dataStash;
-    private String message;
+    private Menu menu;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,11 +38,16 @@ public class MainActivity extends AppCompatActivity {
 
         Iconify.with(new FontAwesomeModule());
 
-        setContentView(R.layout.main_activity);
-        fragmentManager = getSupportFragmentManager();
-        if (registerFragment == null) {
+        dataStash = DataStash.getInstance();
+
+        setContentView(R.layout.activity_main);
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        if (registerFragment == null && !dataStash.isLoggedIn()) {
             registerFragment = RegisterFragment.newInstance();
             fragmentManager.beginTransaction().add(R.id.main_activity_frame_layout, registerFragment).commit();
+        } else {
+            MapFragment mapFragment = MapFragment.newInstance();
+            fragmentManager.beginTransaction().add(R.id.main_activity_frame_layout, mapFragment).commit();
         }
     }
 
@@ -52,6 +55,43 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        this.menu = menu;
+        if (dataStash.isLoggedIn()) {
+            createMenu();
+            return true;    // return true to display menu
+        } else {
+            return true;
+        }
+    }
+
+    public void createMenu() {
+        if (menu != null) {
+            MenuInflater inflater = getMenuInflater();
+            inflater.inflate(R.menu.activity_main, menu);
+        }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.search:
+                showToast("Search");
+//                startActivity(SearchActivity.class);
+
+                return true;    // return true when handled successfully
+            case R.id.settings:
+                showToast("Settings");
+                Intent intent = SettingsActivity.newIntent(this.getApplicationContext());
+                startActivityForResult(intent, REQ_CODE_ORDER_INFO);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
 
     public static String readString(InputStream is) throws IOException {
         StringBuilder sb = new StringBuilder();

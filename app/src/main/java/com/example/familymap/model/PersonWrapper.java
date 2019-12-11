@@ -1,9 +1,9 @@
 package com.example.familymap.model;
 
-public class People {
+public class PersonWrapper {
     private Person[] data;
 
-    public People(){
+    public PersonWrapper(){
         data = new Person[]{};
     }
 

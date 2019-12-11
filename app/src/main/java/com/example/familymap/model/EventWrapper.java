@@ -1,9 +1,9 @@
 package com.example.familymap.model;
 
-public class Events {
+public class EventWrapper {
     private Event[] data;
 
-    public Events(){
+    public EventWrapper(){
         data = new Event[]{};
     }
 
