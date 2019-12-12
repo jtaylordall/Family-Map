@@ -121,6 +121,7 @@ public class FamilyFinder {
 
     private SortedSet<String> sideHelper(Person person) {
         SortedSet<String> out = new TreeSet<>();
+        out.add(person.getPersonID());
         String fatherID = person.getFatherID();
         String motherID = person.getMotherID();
         if (fatherID != null && !"".equals(fatherID)) {

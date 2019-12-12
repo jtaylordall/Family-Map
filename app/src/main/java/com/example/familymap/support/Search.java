@@ -43,13 +43,13 @@ public class Search {
         Vector<Person> matches = new Vector<>();
         Person[] persons = dataStash.getPersonWrapper().getPeople();
         for (Person p : persons) {
-            if (personPassesFilters(p)) {
-                String firstName = p.getFirstName().toLowerCase();
-                String lastName = p.getLastName().toLowerCase();
-                if (firstName.contains(input) || lastName.contains(input)) {
-                    matches.add(p);
-                }
+            //if (personPassesFilters(p)) {
+            String firstName = p.getFirstName().toLowerCase();
+            String lastName = p.getLastName().toLowerCase();
+            if (firstName.contains(input) || lastName.contains(input)) {
+                matches.add(p);
             }
+            //}
         }
         return filter.arrayFromVectorP(matches);
     }
@@ -75,12 +75,12 @@ public class Search {
         return filter.arrayFromVectorE(matches);
     }
 
-    private boolean eventPassesFilters(Event event) {
+    public boolean eventPassesFilters(Event event) {
         Person person = familyFinder.findPerson(event.getPersonID());
         return personPassesFilters(person);
     }
 
-    private boolean personPassesFilters(Person person) {
+    public boolean personPassesFilters(Person person) {
         if (!settingsManager.isMaleEventsOn() && "m".equals(person.getGender())) {
             return false;
         }

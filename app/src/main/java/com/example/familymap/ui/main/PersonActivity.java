@@ -23,6 +23,7 @@ import com.example.familymap.model.Event;
 import com.example.familymap.model.Person;
 import com.example.familymap.support.EventFinder;
 import com.example.familymap.support.FamilyFinder;
+import com.example.familymap.support.Search;
 import com.joanzapata.iconify.IconDrawable;
 import com.joanzapata.iconify.fonts.FontAwesomeIcons;
 
@@ -113,7 +114,7 @@ public class PersonActivity extends AppCompatActivity {
 
     private void initLifeEventsUI() {
         EventAdapter eventAdapter;
-        if (lifeEventsOn) {
+        if (lifeEventsOn && new Search().personPassesFilters(activePerson)) {
             eventAdapter = new EventAdapter(this,
                     eventFinder.getPersonEvents(activePerson.getPersonID()));
         } else {

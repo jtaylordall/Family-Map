@@ -1,6 +1,7 @@
 package com.example.familymap.data;
 
 import com.example.familymap.model.AuthToken;
+import com.example.familymap.model.Event;
 import com.example.familymap.model.EventWrapper;
 import com.example.familymap.model.Person;
 import com.example.familymap.model.PersonWrapper;
@@ -21,6 +22,7 @@ public class DataStash {
     private boolean loggedIn;
     private Map<String, Integer> eventColors;
     private Person activePerson;
+    private Event selectedEventInMainActivity;
 
     private DataStash() {
         loggedIn = false;
@@ -37,6 +39,10 @@ public class DataStash {
 
     public boolean isLoggedIn() {
         return loggedIn;
+    }
+
+    public Event getSelectedEventInMainActivity() {
+        return selectedEventInMainActivity;
     }
 
     public Person getActivePerson() {
@@ -120,4 +126,7 @@ public class DataStash {
         return 0;
     }
 
+    public void setSelectedEventInMainActivity(Event selectedEventInMainActivity) {
+        this.selectedEventInMainActivity = selectedEventInMainActivity;
+    }
 }

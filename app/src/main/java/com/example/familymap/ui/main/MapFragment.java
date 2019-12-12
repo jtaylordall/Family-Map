@@ -24,6 +24,7 @@ import com.example.familymap.model.Person;
 import com.example.familymap.support.EventFinder;
 import com.example.familymap.support.FamilyFinder;
 import com.example.familymap.support.Filter;
+import com.example.familymap.support.Search;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -60,6 +61,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     private Event event;
     private FrameLayout frameLayout;
     private Vector<Polyline> polylines;
+    private boolean inEventActivity;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -77,6 +79,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         }
         dataStash = DataStash.getInstance();
         settingsManager = SettingsManager.getInstance();
+        inEventActivity = false;
 
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getChildFragmentManager()
@@ -116,28 +119,39 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void centerMap(Event[] events) {
-        if (this.getArguments().containsKey("eventID")) {
-            Event event = new EventFinder().findEvent(this.getArguments().getString("eventID"));
-            Log.d("EVENT", event.toString());
+        if (this.getArguments().containsKey("eventID") ||
+                dataStash.getSelectedEventInMainActivity() != null) {
+            Event event;
+            if (this.getArguments().containsKey("eventID")) {
+                event = new EventFinder()
+                        .findEvent(this.getArguments().getString("eventID"));
+                inEventActivity = true;
+            } else {
+                inEventActivity = false;
+                event = dataStash.getSelectedEventInMainActivity();
+            }
+            //Log.d("EVENT", event.toString());
 
             LatLng center = new LatLng(event.getLatitude(), event.getLongitude());
             CameraUpdate update = CameraUpdateFactory.newLatLng(center);
             map.moveCamera(update);
-            MarkerOptions options =
-                    new MarkerOptions().position(center).title(event.getCity())
-                            .icon(generateBitmapDescriptorMarker(dataStash.getEventColor(event.getEventType())));
-            Marker marker = map.addMarker(options);
-            marker.setTag(event);
+            if (new Search().eventPassesFilters(event)) {
+                MarkerOptions options =
+                        new MarkerOptions().position(center).title(event.getCity())
+                                .icon(generateBitmapDescriptorMarker(dataStash.getEventColor(event.getEventType())));
+                Marker marker = map.addMarker(options);
+                marker.setTag(event);
 
-            setMarkerListener(events);
-            assessLineSettings(events, event);
-            Person person = dataStash.getPersonMap().get(event.getPersonID());
-            activePerson = person;
-            String markerData = getMarkerData(person, event);
-            markerTextView.setText(markerData);
-            setGenderIcon(person.getGender());
-            setPersonClickListener();
-            zoomMap(WIDTH);
+                setMarkerListener(events);
+                assessLineSettings(events, event);
+                Person person = dataStash.getPersonMap().get(event.getPersonID());
+                activePerson = person;
+                String markerData = getMarkerData(person, event);
+                markerTextView.setText(markerData);
+                setGenderIcon(person.getGender());
+                setPersonClickListener();
+                zoomMap(WIDTH);
+            }
         }
     }
 
@@ -170,6 +184,9 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
                 clearPolylines();
                 zoomMap(WIDTH);
                 Event event = (Event) marker.getTag();
+                if (!inEventActivity) {
+                    dataStash.setSelectedEventInMainActivity(event);
+                }
                 Person person = dataStash.getPersonMap().get(event.getPersonID());
                 //dataStash.setActivePerson(person);
                 activePerson = person;
@@ -270,7 +287,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         Person person = new FamilyFinder().findPerson(event.getPersonID());
         Collections.addAll(eventSet, events);
         int color = getRandColor();
-        drawParentLine(event, eventSet, 12, color);
+        drawParentLine(event, eventSet, WIDTH, color);
     }
 
     private void drawParentLine(Event event, SortedSet<Event> eventSet, float width, int color) {
@@ -280,23 +297,23 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         Person father = familyFinder.findPerson(person.getFatherID());
         Person mother = familyFinder.findPerson(person.getMotherID());
         if (father != null) {
-            Event[] fEvents = eventFinder.getPersonEvents(father.getFatherID());
+            Event[] fEvents = eventFinder.getPersonEvents(father.getPersonID());
             if (fEvents.length > 0) {
                 Event fEvent = fEvents[0];
                 if (eventSet.contains(fEvent)) {
                     drawRelationshipLine(event, father, width, color);
+                    drawParentLine(fEvent, eventSet, width / 2, color);
                 }
-                drawParentLine(fEvent, eventSet, width - 2, color);
             }
         }
         if (mother != null) {
-            Event[] mEvents = eventFinder.getPersonEvents(mother.getMotherID());
+            Event[] mEvents = eventFinder.getPersonEvents(mother.getPersonID());
             if (mEvents.length > 0) {
                 Event mEvent = mEvents[0];
                 if (eventSet.contains(mEvent)) {
                     drawRelationshipLine(event, mother, width, color);
+                    drawParentLine(mEvent, eventSet, width - 3, color);
                 }
-                drawParentLine(mEvent, eventSet, width - 2, color);
             }
         }
     }
@@ -320,12 +337,12 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
 
     private void drawSpouseLines(Event[] events, Event event) {
         Person person = new FamilyFinder().findPerson(event.getPersonID());
-        for (Event e : events) {
-            if ("marriage".equals(e.getEventType()) && e.getPersonID().equals(person.getPersonID())) {
-                Person spouse = new FamilyFinder().findPerson(person.getSpouseID());
+        if (!"".equals(person.getSpouseID()) && person.getSpouseID() != null) {
+            Person spouse = new FamilyFinder().findPerson(person.getSpouseID());
+            boolean passes = new Search().personPassesFilters(spouse);
+            if (spouse != null && passes) {
                 drawRelationshipLine(event, spouse, WIDTH,
                         dataStash.getEventColor("marriage"));
-                break;
             }
         }
     }
@@ -420,7 +437,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         }
     }
 
-    private Event[] filter(Event[] events) {
+    public Event[] filter(Event[] events) {
         Filter filter = new Filter();
 
         if (settingsManager.isFathersSideOn() && !settingsManager.isMothersSideOn()) {

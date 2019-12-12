@@ -9,7 +9,7 @@ public class Values {
     public static final int REQ_CODE_ORDER_INFO = 1;
     public static final int mapType1 = MAP_TYPE_NORMAL;
     public static final int mapType2 = MAP_TYPE_SATELLITE;
-    public static final float WIDTH = 10;
+    public static final float WIDTH = 12;
     public static final int color1 = BLUE;
     public static final int color2 = BLACK;
 
