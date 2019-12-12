@@ -76,15 +76,14 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        Intent intent;
         switch (item.getItemId()) {
             case R.id.search:
-                showToast("Search");
-//                startActivity(SearchActivity.class);
-
-                return true;    // return true when handled successfully
+                intent = SearchActivity.newIntent(this.getApplicationContext());
+                startActivityForResult(intent, REQ_CODE_ORDER_INFO);
+                return true;
             case R.id.settings:
-                showToast("Settings");
-                Intent intent = SettingsActivity.newIntent(this.getApplicationContext());
+                intent = SettingsActivity.newIntent(this.getApplicationContext());
                 startActivityForResult(intent, REQ_CODE_ORDER_INFO);
                 return true;
             default:

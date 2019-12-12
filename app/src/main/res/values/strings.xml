@@ -46,4 +46,6 @@
     <string name="filter_gender">FILTER EVENTS BASED ON GENDER</string>
     <string name="logout_description">RETURN TO LOGIN SCREEN</string>
 
+    <string name="search">Search for a person or event</string>
+
 </resources>

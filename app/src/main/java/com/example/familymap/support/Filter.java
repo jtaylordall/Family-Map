@@ -25,7 +25,7 @@ public class Filter {
                 filteredEvents.add(e);
             }
         }
-        return arrayFromVector(filteredEvents);
+        return arrayFromVectorE(filteredEvents);
     }
 
     public Event[] filterMothersSide(Event[] inEvents){
@@ -37,7 +37,7 @@ public class Filter {
                 filteredEvents.add(e);
             }
         }
-        return arrayFromVector(filteredEvents);
+        return arrayFromVectorE(filteredEvents);
     }
 
     public Event[] filterMales(Event[] inEvents){
@@ -48,7 +48,7 @@ public class Filter {
                 filteredEvents.add(e);
             }
         }
-        return arrayFromVector(filteredEvents);
+        return arrayFromVectorE(filteredEvents);
     }
     public Event[] filterFemales(Event[] inEvents){
         Vector<Event> filteredEvents = new Vector<>();
@@ -58,11 +58,19 @@ public class Filter {
                 filteredEvents.add(e);
             }
         }
-        return arrayFromVector(filteredEvents);
+        return arrayFromVectorE(filteredEvents);
     }
 
-    private Event[] arrayFromVector(Vector<Event> v){
+    public Event[] arrayFromVectorE(Vector<Event> v){
         Event[] out = new Event[v.size()];
+        for (int a = 0; a < out.length; a++){
+            out[a] = v.elementAt(a);
+        }
+        return out;
+    }
+
+    public Person[] arrayFromVectorP(Vector<Person> v){
+        Person[] out = new Person[v.size()];
         for (int a = 0; a < out.length; a++){
             out[a] = v.elementAt(a);
         }

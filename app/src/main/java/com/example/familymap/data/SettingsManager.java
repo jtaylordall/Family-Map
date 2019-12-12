@@ -14,8 +14,8 @@ public class SettingsManager {
 
     private SettingsManager(){
         lifeStoryLinesOn = true;
-        familyTreeLinesOn = false;
-        spouseLinesOn = false;
+        familyTreeLinesOn = true;
+        spouseLinesOn = true;
         fathersSideOn = true;
         mothersSideOn = true;
         maleEventsOn = true;

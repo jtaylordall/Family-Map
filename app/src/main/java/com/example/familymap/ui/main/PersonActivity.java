@@ -152,7 +152,8 @@ public class PersonActivity extends AppCompatActivity {
 
         @Override
         public EventHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view = inflater.inflate(R.layout.list_item, parent, false);
+            View view = inflater.inflate(R.layout.list_item,
+                    parent, false);
             return new EventHolder(view);
         }
 
@@ -205,7 +206,7 @@ public class PersonActivity extends AppCompatActivity {
 
             Drawable drawable = new IconDrawable(getApplicationContext(),
                     FontAwesomeIcons.fa_map_marker)
-                    .color(dataStash.getEventColor(event.getEventType()))
+                    .color(dataStash.getEventColor(event.getEventType().toLowerCase()))
                     .sizeDp(40);
             ImageView eventIcon = new ImageView(getApplicationContext());
             eventIcon.setImageDrawable(drawable);
@@ -218,7 +219,8 @@ public class PersonActivity extends AppCompatActivity {
 
             frameLayout.addView(eventIcon);
 
-            String name = activePerson.getFirstName() + " " + activePerson.getLastName();
+            String name = activePerson.getFirstName() +
+                    " " + activePerson.getLastName();
             eventPersonName.setText(name);
         }
 

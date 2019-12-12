@@ -103,7 +103,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
 
         Event[] events = dataStash.getEventWrapper().getEvents();
         events = filter(events);
-        centerMap();
+        centerMap(events);
 //        zoomMap(10);
 //        setMapType();
 //        setClickListener();
@@ -115,7 +115,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
 //        drawLines();
     }
 
-    private void centerMap() {
+    private void centerMap(Event[] events) {
         if (this.getArguments().containsKey("eventID")) {
             Event event = new EventFinder().findEvent(this.getArguments().getString("eventID"));
             Log.d("EVENT", event.toString());
@@ -129,7 +129,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
             Marker marker = map.addMarker(options);
             marker.setTag(event);
 
-            setMarkerListener(filter(dataStash.getEventWrapper().getEvents()));
+            setMarkerListener(events);
+            assessLineSettings(events, event);
             Person person = dataStash.getPersonMap().get(event.getPersonID());
             activePerson = person;
             String markerData = getMarkerData(person, event);
@@ -269,12 +270,13 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         Person person = new FamilyFinder().findPerson(event.getPersonID());
         Collections.addAll(eventSet, events);
         int color = getRandColor();
-        drawParentLine(person, eventSet, 12, color);
+        drawParentLine(event, eventSet, 12, color);
     }
 
-    private void drawParentLine(Person person, SortedSet<Event> eventSet, float width, int color) {
+    private void drawParentLine(Event event, SortedSet<Event> eventSet, float width, int color) {
         FamilyFinder familyFinder = new FamilyFinder();
         EventFinder eventFinder = new EventFinder();
+        Person person = familyFinder.findPerson(event.getPersonID());
         Person father = familyFinder.findPerson(person.getFatherID());
         Person mother = familyFinder.findPerson(person.getMotherID());
         if (father != null) {
@@ -282,20 +284,20 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
             if (fEvents.length > 0) {
                 Event fEvent = fEvents[0];
                 if (eventSet.contains(fEvent)) {
-                    drawRelationshipLine(person, father, width, color);
+                    drawRelationshipLine(event, father, width, color);
                 }
+                drawParentLine(fEvent, eventSet, width - 2, color);
             }
-            drawParentLine(father, eventSet, width - 2, color);
         }
         if (mother != null) {
             Event[] mEvents = eventFinder.getPersonEvents(mother.getMotherID());
             if (mEvents.length > 0) {
                 Event mEvent = mEvents[0];
                 if (eventSet.contains(mEvent)) {
-                    drawRelationshipLine(person, mother, width, color);
+                    drawRelationshipLine(event, mother, width, color);
                 }
+                drawParentLine(mEvent, eventSet, width - 2, color);
             }
-            drawParentLine(mother, eventSet, width - 2, color);
         }
     }
 
@@ -321,15 +323,15 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         for (Event e : events) {
             if ("marriage".equals(e.getEventType()) && e.getPersonID().equals(person.getPersonID())) {
                 Person spouse = new FamilyFinder().findPerson(person.getSpouseID());
-                drawRelationshipLine(person, spouse, WIDTH,
+                drawRelationshipLine(event, spouse, WIDTH,
                         dataStash.getEventColor("marriage"));
                 break;
             }
         }
     }
 
-    private void drawRelationshipLine(Person husband, Person wife, float width, int color) {
-        Event hEvent = new EventFinder().getPersonEvents(husband.getPersonID())[0];
+    private void drawRelationshipLine(Event hEvent, Person wife, float width, int color) {
+        //Event hEvent = new EventFinder().getPersonEvents(husband.getPersonID())[0];
         Event wEvent = new EventFinder().getPersonEvents(wife.getPersonID())[0];
         if (hEvent != null && wEvent != null) {
             LatLng latLng1 = new LatLng(hEvent.getLatitude(), hEvent.getLongitude());
@@ -426,7 +428,10 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         } else if (settingsManager.isMothersSideOn() && !settingsManager.isFathersSideOn()) {
             events = filter.filterMothersSide(events);
         } else if (!settingsManager.isFathersSideOn() && !settingsManager.isMothersSideOn()) {
-            events = new EventFinder().getPersonEvents(dataStash.getActivePerson().getPersonID());
+            Person person = new FamilyFinder().findPerson(dataStash.getActivePerson().getPersonID());
+            Event[] events1 = new EventFinder().getPersonEvents(person.getPersonID());
+            Event[] events2 = new EventFinder().getPersonEvents(person.getSpouseID());
+            events = combineArrays(events1, events2);
         }
 
         if (settingsManager.isMaleEventsOn() && !settingsManager.isFemaleEventsOn()) {
@@ -438,6 +443,19 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         }
 
         return events;
+    }
+
+    private Event[] combineArrays(Event[] events1, Event[] events2) {
+        Event[] outEvents = new Event[events1.length + events2.length];
+        int i = 0;
+        for (Event item : events1) {
+            outEvents[i] = item;
+            i++;
+        }
+        for (Event value : events2) {
+            outEvents[i] = value;
+        }
+        return outEvents;
     }
 
     private int getRandColor() {
